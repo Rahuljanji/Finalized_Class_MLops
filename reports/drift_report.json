@@ -1,0 +1,56 @@
+{
+    "timestamp": "2026-11-20T11:35:41.927916+00:00",
+    "reference_samples": 117,
+    "current_samples": 51,
+    "total_features": 4,
+    "drifted_features": 0,
+    "drift_share_pct": 0.0,
+    "dataset_drift_detected": false,
+    "dataset_drift_threshold_pct": 50.0,
+    "features": {
+        "SepalLengthCm": {
+            "drift_detected": false,
+            "p_value": 0.37147633211810205,
+            "ks_statistic": 0.14831573655103067,
+            "threshold": 0.05,
+            "reference_mean": 5.835042735042736,
+            "reference_std": 0.8556814887208489,
+            "current_mean": 5.613725490196079,
+            "current_std": 0.738312757959617,
+            "mean_shift": -0.2213172448466567
+        },
+        "SepalWidthCm": {
+            "drift_detected": false,
+            "p_value": 0.8759285286120578,
+            "ks_statistic": 0.09401709401709402,
+            "threshold": 0.05,
+            "reference_mean": 3.0316239316239315,
+            "reference_std": 0.44599827002262554,
+            "current_mean": 3.007843137254902,
+            "current_std": 0.3440492083220369,
+            "mean_shift": -0.02378079436902958
+        },
+        "PetalLengthCm": {
+            "drift_detected": false,
+            "p_value": 0.12131796951713177,
+            "ks_statistic": 0.19306184012066366,
+            "threshold": 0.05,
+            "reference_mean": 3.7846153846153845,
+            "reference_std": 1.759400411883538,
+            "current_mean": 3.6843137254901963,
+            "current_std": 1.6781610557474205,
+            "mean_shift": -0.10030165912518818
+        },
+        "PetalWidthCm": {
+            "drift_detected": false,
+            "p_value": 0.07415459330215837,
+            "ks_statistic": 0.2096530920060332,
+            "threshold": 0.05,
+            "reference_mean": 1.2119658119658119,
+            "reference_std": 0.7572061098857248,
+            "current_mean": 1.2294117647058826,
+            "current_std": 0.6253764725432285,
+            "mean_shift": 0.01744595274007077
+        }
+    }
+}

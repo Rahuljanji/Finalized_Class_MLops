@@ -141,6 +141,10 @@ def main():
     with open(DETAILS_PATH, "w", encoding="utf-8") as file:
         json.dump(details, file, indent=4)
 
+    import os
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", None)
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(config["experiment_name"])
     with mlflow.start_run(run_name="champion_evaluation"):
         mlflow.log_param("champion_model", champion_name)

@@ -33,14 +33,20 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dvc.txt
 
-      - name: Install training dependencies
+      - name: Install training and testing dependencies
         run: pip install -r requirements-dvc.txt
+
+      - name: Run unit and integration tests (pytest)
+        run: pytest tests/ -v
 
       - name: Run DVC pipeline (train, compare, select champion, evaluate)
         run: dvc repro
 
       - name: Show metrics
         run: dvc metrics show
+
+      - name: Run data drift monitoring baseline
+        run: python src/monitor_drift.py --generate-sample-data
 
       - name: Publish model comparison to job summary
         if: always()
@@ -86,7 +92,7 @@ jobs:
           print("Quality gate passed")
           PY
 
-      - name: Upload champion model and reports
+      - name: Upload champion model, data, and reports
         uses: actions/upload-artifact@v4
         with:
           name: model-artifacts
@@ -97,6 +103,9 @@ jobs:
             reports/model_selection.json
             reports/model_comparison.csv
             reports/model_comparison.md
+            reports/drift_report.json
+            reports/drift_report.html
+            data/processed/train.csv
           if-no-files-found: error
 
   docker:
@@ -108,16 +117,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download champion model
+      - name: Download champion model and artifacts
         uses: actions/download-artifact@v4
         with:
           name: model-artifacts
           path: artifacts
 
-      - name: Place model where the Dockerfile expects it
+      - name: Place artifacts where the Dockerfile expects them
         run: |
-          mkdir -p models
+          mkdir -p models reports data/processed
           cp artifacts/models/model.pkl models/model.pkl
+          cp -r artifacts/reports/* reports/ 2>/dev/null || true
+          cp artifacts/data/processed/train.csv data/processed/train.csv 2>/dev/null || true
 
       - name: Build image
         run: docker build -t $IMAGE_NAME:latest .

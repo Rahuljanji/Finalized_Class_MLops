@@ -3,12 +3,12 @@
     "precision_macro": 1.0,
     "recall_macro": 1.0,
     "f1_macro": 1.0,
-    "champion_cv_accuracy": 0.9746376811594203,
+    "champion_cv_accuracy": 0.9833333333333332,
     "champion_training_accuracy_pct": 97.43589743589743,
-    "champion_validation_accuracy_pct": 97.46376811594203,
-    "champion_accuracy_gap_pct": -0.02787068004460025,
-    "champion_model_size_mb": 0.004246711730957031,
-    "champion_training_time_seconds": 0.006667999958153814,
-    "champion_prediction_time_ms": 1.2231299991253763,
-    "test_vs_validation_gap_pct": -2.536231884057969
+    "champion_validation_accuracy_pct": 98.33333333333331,
+    "champion_accuracy_gap_pct": -0.8974358974358836,
+    "champion_model_size_mb": 0.004445075988769531,
+    "champion_training_time_seconds": 0.004214200016576797,
+    "champion_prediction_time_ms": 1.0427560005337,
+    "test_vs_validation_gap_pct": -1.6666666666666856
 }

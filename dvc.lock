@@ -85,8 +85,8 @@ stages:
       size: 1807
     - path: src/model_building.py
       hash: md5
-      md5: 9b48aec44e139fae99c89dc0621f1189
-      size: 21829
+      md5: 9ef7ecc393ac4b95cdcd94dbd9f5493d
+      size: 22160
     params:
       params.yaml:
         cv_folds: 5
@@ -110,21 +110,21 @@ stages:
     outs:
     - path: models
       hash: md5
-      md5: 42d990d9370e9714c3bcc32874e35b60.dir
-      size: 1635899
+      md5: ac57ab603f1edd274d062f9c4857e085.dir
+      size: 2964107
       nfiles: 7
     - path: reports/model_comparison.csv
       hash: md5
-      md5: 6259d8b5e4a1f837728c26c5147fe62f
-      size: 551
+      md5: 43af28c549740b465a054439ac1c3cfb
+      size: 571
     - path: reports/model_comparison.md
       hash: md5
-      md5: 125a3f2c0de46028e57ea9bc6bd7867b
-      size: 773
+      md5: 6da0aa2431907fc7dca23ebc2dea6b1b
+      size: 793
     - path: reports/model_selection.json
       hash: md5
-      md5: 34f90844f90ba6e4a2fc95fc439154de
-      size: 5989
+      md5: b828f19801bce36a7774c677910b55f6
+      size: 5913
   model_evaluation:
     cmd: python src/model_evaluation.py
     deps:
@@ -138,26 +138,26 @@ stages:
       size: 469
     - path: models
       hash: md5
-      md5: 42d990d9370e9714c3bcc32874e35b60.dir
-      size: 1635899
+      md5: ac57ab603f1edd274d062f9c4857e085.dir
+      size: 2964107
       nfiles: 7
     - path: reports/model_selection.json
       hash: md5
-      md5: 34f90844f90ba6e4a2fc95fc439154de
-      size: 5989
+      md5: b828f19801bce36a7774c677910b55f6
+      size: 5913
     - path: src/model_evaluation.py
       hash: md5
-      md5: 7c5291d494ed71abd9c6e807e435e9b9
-      size: 6833
+      md5: 000bb95b852a5836a76c5c6f0d901e87
+      size: 6972
     params:
       params.yaml:
         experiment_name: Iris_DVC_Pipeline
     outs:
     - path: reports/evaluation_details.json
       hash: md5
-      md5: 6ae722934585527b587ef9219cdd2433
+      md5: 097321ff2809cb6d2831150d390468bc
       size: 5890
     - path: reports/metrics.json
       hash: md5
-      md5: 017d11a39399462b773805b13ed668c7
-      size: 550
+      md5: e7279032542dc1706561966ae6da8c9e
+      size: 547

@@ -8,18 +8,19 @@ __pycache__/
 .dvc/
 .env
 .ipynb_checkpoints/
+experiments/
+.pytest_cache/
 
-data/
-src/
-reports/
+data/raw/
+data/ingested/
+data/monitoring/
 mlruns/
 mlartifacts/
-iris_pipeline_hpt.py
 dvc.yaml
 dvc.lock
 params.yaml
 requirements-dvc.txt
-README.md
+tests/
 
 models/*
 !models/model.pkl

@@ -130,21 +130,21 @@ def suggest_params(model_name, trial):
     return scaler_type, params
 
 
-def build_pipeline(model_name, params, scaler_type):
+def build_pipeline(model_name, params, scaler_type, random_state=42):
     scaler = StandardScaler() if scaler_type == "standard" else MinMaxScaler()
 
     if model_name == "KNN":
         estimator = KNeighborsClassifier(**params)
     elif model_name == "DecisionTree":
-        estimator = DecisionTreeClassifier(**params, random_state=42)
+        estimator = DecisionTreeClassifier(**params, random_state=random_state)
     elif model_name == "SVM":
-        estimator = SVC(**params)
+        estimator = SVC(**params, probability=True, random_state=random_state)
     elif model_name == "GaussianNB":
         estimator = GaussianNB(**params)
     elif model_name == "RandomForest":
-        estimator = RandomForestClassifier(**params, random_state=42, n_jobs=-1)
+        estimator = RandomForestClassifier(**params, random_state=random_state, n_jobs=-1)
     elif model_name == "GradientBoosting":
-        estimator = GradientBoostingClassifier(**params, random_state=42)
+        estimator = GradientBoostingClassifier(**params, random_state=random_state)
     else:
         raise ValueError(f"Unknown model: {model_name}")
 
@@ -154,13 +154,13 @@ def build_pipeline(model_name, params, scaler_type):
 # --------------------------------------------------------------------------
 # Step 2: criteria measurement helpers
 # --------------------------------------------------------------------------
-def fit_with_timing(model_name, params, scaler_type, X, y, repeats):
+def fit_with_timing(model_name, params, scaler_type, X, y, repeats, random_state=42):
     """Fit the final pipeline `repeats` times; return last fitted model and
     the median wall-clock fit time in seconds."""
     times = []
     pipeline = None
     for _ in range(max(1, repeats)):
-        pipeline = build_pipeline(model_name, params, scaler_type)
+        pipeline = build_pipeline(model_name, params, scaler_type, random_state=random_state)
         start = time.perf_counter()
         pipeline.fit(X, y)
         times.append(time.perf_counter() - start)
@@ -337,6 +337,9 @@ def main():
     cv_folds = int(config["cv_folds"])
     n_trials = int(config["n_trials"])
 
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", None)
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(config["experiment_name"])
 
     results = {}
@@ -354,7 +357,7 @@ def main():
 
             def objective(trial):
                 scaler_type, model_params = suggest_params(model_name, trial)
-                candidate = build_pipeline(model_name, model_params, scaler_type)
+                candidate = build_pipeline(model_name, model_params, scaler_type, random_state=random_state)
                 cv = StratifiedKFold(
                     n_splits=cv_folds, shuffle=True, random_state=random_state
                 )
@@ -405,6 +408,7 @@ def main():
             final_pipeline, train_time = fit_with_timing(
                 model_name, best_model_params, best_scaler, X_train, y_train,
                 int(meas_cfg["training_time_repeats"]),
+                random_state=random_state,
             )
 
             model_path = MODELS_DIR / f"{model_name}.pkl"

@@ -11,6 +11,10 @@ mlflow.db
 .DS_Store
 .vscode/
 .idea/
+.pytest_cache/
+*.pkl
+!models/model.pkl
 /data/ingested/
 /data/processed/
+/data/monitoring/
 /models/
