@@ -41,6 +41,24 @@ st.set_page_config(
 @st.cache_resource
 def load_champion_model():
     if not MODEL_PATH.exists():
+        # Cloud deployment fallback: auto-train champion if data/raw/Iris.csv exists
+        raw_path = Path(__file__).parent / "data" / "raw" / "Iris.csv"
+        if raw_path.exists():
+            from sklearn.pipeline import Pipeline
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.svm import SVC
+
+            raw_data = pd.read_csv(raw_path).drop_duplicates()
+            X = raw_data[FEATURES]
+            y = raw_data["Species"]
+            fallback_pipeline = Pipeline([
+                ("Scaler", StandardScaler()),
+                ("Model", SVC(C=0.899, kernel="linear", probability=True, random_state=42)),
+            ])
+            fallback_pipeline.fit(X, y)
+            MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            joblib.dump(fallback_pipeline, MODEL_PATH)
+            return fallback_pipeline
         return None
     return joblib.load(MODEL_PATH)
 
@@ -184,8 +202,9 @@ with tab_monitoring:
         st.write(f"**Total production records logged:** `{len(log_df)}`")
 
         if run_check or len(log_df) >= 5:
-            if REFERENCE_DATA_PATH.exists():
-                ref_df = pd.read_csv(REFERENCE_DATA_PATH)
+            ref_path = REFERENCE_DATA_PATH if REFERENCE_DATA_PATH.exists() else Path("data/raw/Iris.csv")
+            if ref_path.exists():
+                ref_df = pd.read_csv(ref_path).drop_duplicates()
                 report = analyze_drift(ref_df, log_df)
 
                 status_color = "red" if report["dataset_drift_detected"] else "green"

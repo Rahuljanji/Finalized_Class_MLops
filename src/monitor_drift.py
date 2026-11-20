@@ -381,10 +381,14 @@ def main():
     args = parser.parse_args()
 
     if not args.reference.exists():
-        print(f"Error: Reference training data not found at {args.reference}. Run dvc repro first.")
-        sys.exit(1)
-
-    ref_df = pd.read_csv(args.reference)
+        raw_fallback = Path("data/raw/Iris.csv")
+        if raw_fallback.exists():
+            ref_df = pd.read_csv(raw_fallback).drop_duplicates()
+        else:
+            print(f"Error: Reference training data not found at {args.reference}. Run dvc repro first.")
+            sys.exit(1)
+    else:
+        ref_df = pd.read_csv(args.reference)
 
     logs_df = load_inference_logs(args.logs)
     if len(logs_df) < 5 or args.generate_sample_data or args.simulate_drift:

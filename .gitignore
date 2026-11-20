@@ -12,9 +12,14 @@ mlflow.db
 .vscode/
 .idea/
 .pytest_cache/
+
 *.pkl
 !models/model.pkl
+models/*
+!models/model.pkl
+
 /data/ingested/
-/data/processed/
 /data/monitoring/
-/models/
+/data/processed/*
+!data/processed/train.csv
+!data/processed/test.csv
