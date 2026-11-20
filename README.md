@@ -6,13 +6,13 @@
 [![Optuna](https://img.shields.io/badge/Optuna-Bayesian%20HPT-2882C7?style=flat)](https://optuna.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Automated%20CI%2FCD-2088FF?style=flat&logo=github-actions&logoColor=white)](https://github.com/features/actions)
-[![Pytest](https://img.shields.io/badge/Pytest-Passing-0A9EDC?style=flat&logo=pytest&logoColor=white)](https://docs.pytest.org/)
+[![Pytest](https://img.shields.io/badge/Pytest-11%20Passed-0A9EDC?style=flat&logo=pytest&logoColor=white)](https://docs.pytest.org/)
 
-An enterprise-ready, reproducible Machine Learning Operations (MLOps) project built on the classic Iris classification task. The project demonstrates the entire machine learning lifecycle: **data versioning, automated multi-model hyperparameter search, multi-criteria champion selection, test-set quarantine, containerized serving, CI/CD quality gates, and production data drift monitoring**.
+An enterprise-ready, reproducible Machine Learning Operations (MLOps) system built on the classic Iris classification problem. The project demonstrates the full production ML lifecycle: **data versioning, automated multi-model Bayesian hyperparameter search, multi-criteria champion selection, test-set quarantine, containerized serving, CI/CD quality gates, and automated production data drift alerting with continuous retraining (CT)**.
 
 ---
 
-## 🏛️ Architecture Overview
+## 🏛️ System Architecture
 
 ```mermaid
 flowchart TD
@@ -27,10 +27,10 @@ flowchart TD
     end
 
     subgraph Model_Governance["2. Training & Automated Champion Selection"]
-        TrainFeat --> HPT["src/model_building.py\n(Optuna HPT across 6 Model Families)"]
+        TrainFeat --> HPT["src/model_building.py\n(Optuna Bayesian Search across 6 Models)"]
         HPT --> CV["5-Fold Stratified CV + Overfitting Penalty"]
-        CV --> MLflow["MLflow Experiment Tracking (180+ Trials)"]
-        CV --> Selection["Multi-Criteria Decision Analysis\n• Gap < 5% (Hard Filter)\n• Val Acc within 1% Tolerance\n• Cost = 0.4*Size + 0.3*TrainTime + 0.3*Latency"]
+        CV --> MLflow["MLflow Experiment Tracking (180+ Runs)"]
+        CV --> Selection["Multi-Criteria Decision Matrix\n• Overfitting Gap < 5% (Hard Filter)\n• Val Acc within 1% Tolerance\n• Cost = 0.4*Size + 0.3*TrainTime + 0.3*Latency"]
         Selection --> Champion["models/model.pkl (Active Champion: SVM)"]
         Selection --> Reports["reports/model_selection.json\nreports/model_comparison.md"]
     end
@@ -41,9 +41,9 @@ flowchart TD
         Eval --> Metrics["reports/metrics.json\nreports/evaluation_details.json"]
     end
 
-    subgraph CI_CD["4. GitHub Actions CI/CD Quality Gates"]
-        Tests["pytest tests/ -v"] --> Reproduce["dvc repro"]
-        Reproduce --> Gate["Quality Gate:\n• Test Acc >= 85%\n• Gap < 5%\n• No Fallbacks Allowed"]
+    subgraph CI_CD["4. GitHub Actions CI/CD Pipeline (main.yaml)"]
+        Tests["pytest tests/ -v (11 Tests)"] --> Reproduce["dvc repro"]
+        Reproduce --> Gate["Quality Gate:\n• Test Acc >= 85%\n• Gap < 5%\n• No Heuristic Fallback"]
         Gate --> DockerBuild["Docker Build (Non-root user)"]
         DockerBuild --> SmokeTest["Container Smoke Test (Healthcheck Poll)"]
         SmokeTest --> DockerHub["Docker Hub Registry (latest & SHA)"]
@@ -51,10 +51,18 @@ flowchart TD
 
     subgraph Serving_Monitoring["5. Serving & Production Monitoring"]
         Champion --> App["app.py (Streamlit Web Portal)"]
-        App --> Logs["data/monitoring/inference_logs.csv"]
+        App --> Logs["data/monitoring/inference_logs.csv\n(Canonical 9-Column Payload Log)"]
         Logs --> Drift["src/monitor_drift.py\n(Kolmogorov-Smirnov Statistical Drift Test)"]
-        Drift --> DriftReports["reports/drift_report.html\nreports/drift_report.json"]
-        DriftReports -.->|Alert & Trigger| Ingest
+        Drift --> DriftReports["reports/drift_report.html\nreports/drift_report.json\nreports/drift_alert.md"]
+    end
+
+    subgraph Continuous_Training["6. Automated Alerting & Retraining Loop"]
+        DriftReports --> ScheduledAction[".github/workflows/scheduled_drift_retrain.yaml\n(Weekly Cron / Manual Dispatch)"]
+        ScheduledAction --> CheckDrift{"Dataset Drift > 50%?"}
+        CheckDrift -- Yes --> AlertTrigger["🚨 Automated Alert\n• GitHub Issue Incident Created\n• Webhook Dispatched (Slack/Discord)"]
+        AlertTrigger --> AutoRetrain["⚙️ Continuous Training (CT)\ndvc repro -> Quality Gate -> Commit Artifacts"]
+        AutoRetrain -.->|Updates Model| Champion
+        CheckDrift -- No --> Sleep["✅ Distribution Healthy\nRetraining Skipped (Zero Compute Wasted)"]
     end
 ```
 
@@ -63,53 +71,56 @@ flowchart TD
 ## 📁 Repository Directory Structure
 
 ```text
-├── .dvc/                       # DVC internal configuration and cache tracking
+├── .dvc/                                   # DVC internal configuration and cache tracking
 ├── .github/workflows/
-│   └── main.yaml               # GitHub Actions CI/CD (Test, DVC Repro, Gate, Docker Smoke)
+│   ├── main.yaml                           # CI/CD: Test, DVC Repro, Quality Gate, Docker Smoke
+│   └── scheduled_drift_retrain.yaml        # CT: Scheduled Drift Monitor, Alerts & Auto-Retrain
 ├── data/
-│   ├── raw/                    # Source raw dataset (Iris.csv)
-│   ├── ingested/               # Ingested and validated raw data
-│   ├── processed/              # Train/Test splits and separated features
-│   └── monitoring/             # Append-only production inference logs (git-ignored)
+│   ├── raw/                                # Source raw dataset (Iris.csv)
+│   ├── ingested/                           # Ingested and validated raw data
+│   ├── processed/                          # Train/Test splits and separated feature files
+│   └── monitoring/                         # Append-only production inference logs (git-ignored)
 ├── experiments/
-│   └── legacy_prototype.py     # Archived initial exploratory prototype
-├── models/                     # Trained candidate models & active champion model
+│   └── legacy_prototype.py                 # Archived initial prototype
+├── models/                                 # Trained candidate models & active champion model
 │   ├── DecisionTree.pkl
 │   ├── GaussianNB.pkl
 │   ├── GradientBoosting.pkl
 │   ├── KNN.pkl
 │   ├── RandomForest.pkl
 │   ├── SVM.pkl
-│   └── model.pkl               # Active champion model used in production
-├── reports/                    # Generated audit, metrics, and monitoring reports
-│   ├── drift_report.html       # Standalone HTML production drift dashboard
-│   ├── drift_report.json       # Structured data drift test statistics
-│   ├── evaluation_details.json # Per-class reports and multi-model test metrics
-│   ├── metrics.json            # Flat metrics tracked by DVC
-│   ├── model_comparison.csv    # Benchmark table across all 6 models
-│   ├── model_comparison.md     # Markdown benchmark table (published to CI summary)
-│   └── model_selection.json    # Champion selection rationale and scoring weights
-├── src/                        # Modular pipeline components
-│   ├── data_ingestion.py       # Ingests, validates columns, strips ID column
-│   ├── data_preprocessing.py   # Deduplication and stratified train/test split
-│   ├── feature_engineering.py  # Isolates features and defers scaling to Pipeline
-│   ├── model_building.py       # Optuna HPT, 5-fold CV, multi-criteria champion selection
-│   ├── model_evaluation.py     # Independent evaluation on quarantined test set
-│   └── monitor_drift.py        # Production inference logging & KS-test drift analysis
-├── tests/                      # Automated test suite (pytest)
-│   ├── test_data.py            # Data validation, schema, and split checks
-│   ├── test_model.py           # Champion model loading, inference, probabilities, determinism
-│   └── test_monitoring.py       # Payload logging and KS drift test assertions
-├── .dockerignore               # Optimized Docker build context exclusions
-├── .dvcignore                  # DVC file tracking exclusions
-├── .gitignore                  # Git exclusions (ignores models, logs, cache)
-├── app.py                      # Multi-tab Streamlit production web application
-├── Dockerfile                  # Production container definition (secure non-root user)
-├── dvc.lock                    # Cryptographic manifest of DVC stage executions
-├── dvc.yaml                    # Declarative DVC pipeline definition
-├── params.yaml                 # Centralized configuration parameters
-├── requirements-dvc.txt        # Training, testing, and pipeline dependencies
-└── requirements.txt            # Minimal serving dependencies for Docker runtime
+│   └── model.pkl                           # Active champion model used in production
+├── reports/                                # Generated audit, metrics, and monitoring reports
+│   ├── drift_alert.md                      # Auto-generated Markdown incident report for alerts
+│   ├── drift_report.html                   # Standalone visual HTML data drift dashboard
+│   ├── drift_report.json                   # Structured Kolmogorov-Smirnov drift statistics
+│   ├── evaluation_details.json             # Per-class classification reports and benchmarks
+│   ├── metrics.json                        # Flat metrics tracked by DVC
+│   ├── model_comparison.csv                # Benchmark metrics across all 6 models
+│   ├── model_comparison.md                 # Markdown benchmark table (published to CI summary)
+│   └── model_selection.json                # Champion selection rationale and scoring weights
+├── src/                                    # Modular pipeline source code
+│   ├── data_ingestion.py                   # Ingests, validates columns, strips ID column
+│   ├── data_preprocessing.py               # Deduplication and stratified train/test split
+│   ├── feature_engineering.py              # Isolates features and defers scaling to Pipeline
+│   ├── model_building.py                   # Optuna HPT, 5-fold CV, multi-criteria champion selection
+│   ├── model_evaluation.py                 # Independent evaluation on quarantined test set
+│   └── monitor_drift.py                    # Inference logging, KS drift test, and alert dispatcher
+├── tests/                                  # Automated test suite (pytest)
+│   ├── __init__.py
+│   ├── test_data.py                        # Data validation, schema, and split checks
+│   ├── test_model.py                       # Model loading, inference, probabilities, determinism
+│   └── test_monitoring.py                  # Payload logging, KS drift test, and alert tests
+├── .dockerignore                           # Optimized Docker build context exclusions
+├── .dvcignore                              # DVC file tracking exclusions
+├── .gitignore                              # Git exclusions (ignores models, logs, cache)
+├── app.py                                  # Multi-tab Streamlit production web application
+├── Dockerfile                              # Production container definition (secure non-root user)
+├── dvc.lock                                # Cryptographic manifest of DVC stage executions
+├── dvc.yaml                                # Declarative DVC pipeline definition
+├── params.yaml                             # Centralized configuration parameters
+├── requirements-dvc.txt                    # Training, testing, and pipeline dependencies
+└── requirements.txt                        # Minimal serving dependencies for Docker runtime
 ```
 
 ---
@@ -138,28 +149,28 @@ Instead of blindly picking the model with the highest validation score, `src/mod
 3. **Multi-Criteria Normalized Cost:** Finalists are ranked by a weighted cost:
    $$\text{Cost} = 0.4 \times \text{Size}_{\text{norm}} + 0.3 \times \text{TrainTime}_{\text{norm}} + 0.3 \times \text{Latency}_{\text{norm}}$$
 4. **Current Champion:** **SVM (Linear Kernel)** selected with:
-   - **Validation Accuracy:** `97.46%`
+   - **Validation Accuracy:** `98.33%`
    - **Test Accuracy:** `100.0%`
-   - **Inference Latency:** `1.22 ms`
-   - **Model Size:** `0.004 MB (4.2 KB)`
+   - **Inference Latency:** `1.04 ms`
+   - **Model Size:** `0.004 MB (4.4 KB)`
 
 ### 3. Continuous Integration & Quality Gates (GitHub Actions)
 Every `push` and `pull_request` to `main` triggers `.github/workflows/main.yaml`:
-1. **Automated Unit Testing:** Runs `pytest tests/ -v`.
+1. **Automated Unit Testing:** Runs `pytest tests/ -v` (11 unit/integration tests).
 2. **Pipeline Reproduction:** Executes `dvc repro`.
-3. **Quality Gate:** Verifies test accuracy $\ge 85\%$, gap $< 5\%$, and confirms no fallback heuristic was needed.
-4. **Step Summary:** Renders the model comparison table directly into the GitHub run summary.
+3. **Quality Gate:** Enforces test accuracy $\ge 85\%$, generalization gap $< 5\%$, and confirms no fallback heuristic was triggered.
+4. **Job Summary:** Renders the model comparison table directly into the GitHub run summary.
 5. **Container Smoke Test:** Builds the Docker image, boots it in the runner, and verifies `_stcore/health`.
 
 ### 4. Production Monitoring & Data Drift Detection
-In `app.py`, every prediction request is logged to `data/monitoring/inference_logs.csv` with its timestamp, measurements, and probabilities.
+In `app.py`, every prediction request is logged to `data/monitoring/inference_logs.csv` with a canonical 9-column schema (timestamp, measurements, predicted class, and probability scores).
 - `src/monitor_drift.py` runs a two-sample **Kolmogorov-Smirnov (KS) statistical test** comparing the current production distribution against the baseline training distribution (`data/processed/train.csv`).
 - Produces both `reports/drift_report.json` and a visual dashboard at `reports/drift_report.html`.
 
 ### 5. Automated Alerting & Continuous Training (CT)
-To guard against silent production decay, `.github/workflows/scheduled_drift_retrain.yaml` runs on a weekly schedule or on-demand:
+To guard against silent production decay, `.github/workflows/scheduled_drift_retrain.yaml` runs on a weekly schedule (Mondays at 00:00 UTC) or on-demand:
 - **Incident Alerts:** When dataset drift exceeds the $50\%$ threshold, GitHub Actions automatically creates a **GitHub Issue** containing full statistical diagnostics (`reports/drift_alert.md`) and emits a webhook alert to Slack/Discord if configured (`ALERT_WEBHOOK_URL`).
-- **Self-Healing Pipeline:** Upon drift detection, the workflow initiates automated Continuous Training (`dvc repro`), validates the new champion against strict quality gates, and commits the refreshed artifacts.
+- **Self-Healing Pipeline:** Upon drift detection, the workflow initiates automated Continuous Training (`dvc repro`), validates the new champion against strict quality gates, and commits the refreshed artifacts back to Git.
 - **Compute Efficiency:** When traffic distributions remain healthy, retraining is skipped, avoiding unnecessary cloud compute.
 
 ---
@@ -198,11 +209,15 @@ pytest tests/ -v
 ```
 
 ### 4. Run Production Data Drift Analysis
-Generate sample traffic and analyze distribution shift:
+Analyze production inference traffic against baseline:
 ```bash
+# Normal traffic analysis:
 python src/monitor_drift.py --generate-sample-data
+
+# Simulate distribution shift (triggers alert generation):
+python src/monitor_drift.py --simulate-drift
 ```
-Open `reports/drift_report.html` in your browser to inspect the visual drift dashboard.
+Open `reports/drift_report.html` in your browser to inspect the visual drift dashboard, or view the generated Markdown alert at `reports/drift_alert.md`.
 
 ### 5. Launch the Streamlit Production Application
 ```bash
@@ -233,6 +248,18 @@ docker run -d -p 8501:8501 --name iris-app iris-mlops-app:latest
 docker ps
 ```
 Visit [http://localhost:8501](http://localhost:8501) to interact with the running container.
+
+---
+
+## ☁️ Cloud Deployment Options (AWS)
+
+1. **AWS S3 as DVC Cloud Remote Storage:**
+   ```bash
+   dvc remote add -d s3remote s3://your-mlops-bucket/dvcstore
+   dvc push
+   ```
+2. **AWS App Runner / ECS:** Deploy the Docker container directly from Amazon ECR or Docker Hub with automatic HTTPS and load balancing.
+3. **AWS EC2 (Free Tier):** Run the Docker container on an EC2 `t2.micro` or `t3.micro` instance at \$0/month under the AWS Free Tier.
 
 ---
 
