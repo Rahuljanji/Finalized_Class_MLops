@@ -156,6 +156,12 @@ In `app.py`, every prediction request is logged to `data/monitoring/inference_lo
 - `src/monitor_drift.py` runs a two-sample **Kolmogorov-Smirnov (KS) statistical test** comparing the current production distribution against the baseline training distribution (`data/processed/train.csv`).
 - Produces both `reports/drift_report.json` and a visual dashboard at `reports/drift_report.html`.
 
+### 5. Automated Alerting & Continuous Training (CT)
+To guard against silent production decay, `.github/workflows/scheduled_drift_retrain.yaml` runs on a weekly schedule or on-demand:
+- **Incident Alerts:** When dataset drift exceeds the $50\%$ threshold, GitHub Actions automatically creates a **GitHub Issue** containing full statistical diagnostics (`reports/drift_alert.md`) and emits a webhook alert to Slack/Discord if configured (`ALERT_WEBHOOK_URL`).
+- **Self-Healing Pipeline:** Upon drift detection, the workflow initiates automated Continuous Training (`dvc repro`), validates the new champion against strict quality gates, and commits the refreshed artifacts.
+- **Compute Efficiency:** When traffic distributions remain healthy, retraining is skipped, avoiding unnecessary cloud compute.
+
 ---
 
 ## 🚀 Quickstart Guide

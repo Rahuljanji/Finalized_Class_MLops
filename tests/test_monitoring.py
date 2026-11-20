@@ -6,7 +6,9 @@ import pytest
 from src.monitor_drift import (
     FEATURE_COLUMNS,
     analyze_drift,
+    generate_alert_markdown,
     log_inference,
+    send_drift_alert,
 )
 
 
@@ -51,3 +53,26 @@ def test_analyze_drift_detects_distribution_shift():
     report = analyze_drift(ref_df, curr_df)
     assert report["dataset_drift_detected"] is True
     assert report["drifted_features"] == len(FEATURE_COLUMNS)
+
+
+def test_generate_alert_markdown_creates_valid_report(tmp_path):
+    """Verify that alert markdown is written with all tables and headers."""
+    alert_path = tmp_path / "test_alert.md"
+    rng = np.random.RandomState(42)
+    ref_df = pd.DataFrame({col: rng.normal(5.0, 0.5, 100) for col in FEATURE_COLUMNS})
+    curr_df = pd.DataFrame({col: rng.normal(10.0, 0.5, 100) for col in FEATURE_COLUMNS})
+
+    report = analyze_drift(ref_df, curr_df)
+    md_text = generate_alert_markdown(report, output_path=alert_path)
+
+    assert alert_path.exists()
+    assert "DATA DRIFT DETECTED" in md_text
+    assert "Continuous Training Required" in md_text
+    assert "Kolmogorov-Smirnov" in md_text
+
+
+def test_send_drift_alert_graceful_without_webhook():
+    """Verify send_drift_alert handles missing webhook without crashing."""
+    report = {"dataset_drift_detected": True, "drifted_features": 4, "total_features": 4, "drift_share_pct": 100.0}
+    result = send_drift_alert(report, webhook_url=None)
+    assert result is False

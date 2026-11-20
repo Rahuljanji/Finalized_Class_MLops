@@ -18,6 +18,7 @@ INFERENCE_LOG_PATH = Path("data/monitoring/inference_logs.csv")
 REPORTS_DIR = Path("reports")
 DRIFT_JSON_PATH = REPORTS_DIR / "drift_report.json"
 DRIFT_HTML_PATH = REPORTS_DIR / "drift_report.html"
+DRIFT_ALERT_MD_PATH = REPORTS_DIR / "drift_alert.md"
 
 FEATURE_COLUMNS = [
     "SepalLengthCm",
@@ -294,6 +295,81 @@ def render_html_report(report: dict, output_path: Path = DRIFT_HTML_PATH):
     output_path.write_text(html, encoding="utf-8")
 
 
+def generate_alert_markdown(report: dict, output_path: Path = DRIFT_ALERT_MD_PATH) -> str:
+    """Generate Markdown incident report for GitHub Issues, Slack, or Step Summary."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    drift_header = "🚨 **HIGH PRIORITY: PRODUCTION DATA DRIFT DETECTED**" if report["dataset_drift_detected"] else "✅ **PRODUCTION DATA DISTRIBUTION HEALTHY**"
+
+    rows = []
+    for feat, data in report["features"].items():
+        status = "⚠️ **DRIFT**" if data["drift_detected"] else "✅ OK"
+        rows.append(
+            f"| `{feat}` | {status} | `{data['p_value']:.4f}` | `{data['ks_statistic']:.4f}` | "
+            f"`{data['reference_mean']:.2f} (±{data['reference_std']:.2f})` | "
+            f"`{data['current_mean']:.2f} (±{data['current_std']:.2f})` | `{data['mean_shift']:+.2f}` |"
+        )
+    table_content = "\n".join(rows)
+
+    action_text = (
+        "⚠️ **Continuous Training Required:** Production feature distributions have deviated significantly from the baseline training distribution. "
+        "Triggering automatic pipeline reproduction (`dvc repro`) and quality gate evaluation."
+        if report["dataset_drift_detected"]
+        else "✅ **No Action Needed:** Production traffic matches the reference baseline distribution within statistical tolerance."
+    )
+
+    md = f"""# {drift_header}
+
+### 📊 Monitoring Summary
+- **Evaluation Timestamp:** `{report['timestamp']}`
+- **Drifted Features:** **{report['drifted_features']} of {report['total_features']}** ({report['drift_share_pct']}%)
+- **Dataset Drift Threshold:** `{report['dataset_drift_threshold_pct']}%`
+- **Reference Training Samples:** `{report['reference_samples']}`
+- **Production Inference Samples:** `{report['current_samples']}`
+
+### 🔬 Kolmogorov-Smirnov (KS) Statistical Tests
+| Feature | Status | p-value | KS Stat | Reference (Mean ± Std) | Production (Mean ± Std) | Mean Shift |
+|---|---|---|---|---|---|---|
+{table_content}
+
+---
+### ⚙️ Action & Continuous Training Status
+{action_text}
+"""
+    output_path.write_text(md, encoding="utf-8")
+    return md
+
+
+def send_drift_alert(report: dict, webhook_url: str = None) -> bool:
+    """Send webhook alert to Slack, Discord, or Teams if configured and drift detected."""
+    import os
+    import urllib.request
+
+    if not report.get("dataset_drift_detected"):
+        return False
+
+    target_url = webhook_url or os.getenv("ALERT_WEBHOOK_URL") or os.getenv("SLACK_WEBHOOK_URL")
+    if not target_url:
+        print("Note: No ALERT_WEBHOOK_URL configured. Markdown alert generated at reports/drift_alert.md.")
+        return False
+
+    payload = {
+        "text": (
+            f"🚨 *[MLOps Alert] Production Data Drift Detected!*\n"
+            f"• Drifted Features: {report['drifted_features']}/{report['total_features']} ({report['drift_share_pct']}%)\n"
+            f"• Action: Triggering automated continuous retraining pipeline (`dvc repro`)."
+        )
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(target_url, data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"Alert successfully delivered to webhook (HTTP {resp.status}).")
+            return True
+    except Exception as e:
+        print(f"Warning: Failed to deliver alert to webhook: {e}")
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Check production data drift against baseline training data.")
     parser.add_argument("--reference", type=Path, default=REFERENCE_DATA_PATH, help="Path to reference training CSV.")
@@ -301,6 +377,7 @@ def main():
     parser.add_argument("--generate-sample-data", action="store_true", help="Generate synthetic inference logs if empty.")
     parser.add_argument("--simulate-drift", action="store_true", help="Simulate drifted traffic for demonstration.")
     parser.add_argument("--fail-on-drift", action="store_true", help="Exit with code 1 if dataset drift is detected.")
+    parser.add_argument("--webhook-url", type=str, default=None, help="Optional Slack/Discord webhook URL for alerts.")
     args = parser.parse_args()
 
     if not args.reference.exists():
@@ -324,6 +401,10 @@ def main():
         json.dump(report, f, indent=4)
 
     render_html_report(report, DRIFT_HTML_PATH)
+    generate_alert_markdown(report, DRIFT_ALERT_MD_PATH)
+
+    if report["dataset_drift_detected"]:
+        send_drift_alert(report, webhook_url=args.webhook_url)
 
     print("\n=== Data Drift Monitoring Report ===")
     print(f"Status: {'DRIFT DETECTED ⚠️' if report['dataset_drift_detected'] else 'DISTRIBUTION HEALTHY ✅'}")
@@ -333,6 +414,7 @@ def main():
         print(f"  - {feat:15s}: [{flag}] p-val={data['p_value']:.4f}, KS={data['ks_statistic']:.4f}, shift={data['mean_shift']:+.2f}")
     print(f"\nSaved JSON report: {DRIFT_JSON_PATH}")
     print(f"Saved HTML report: {DRIFT_HTML_PATH}")
+    print(f"Saved Alert Markdown: {DRIFT_ALERT_MD_PATH}")
 
     if args.fail_on_drift and report["dataset_drift_detected"]:
         print("\nQuality Gate Error: Production data drift exceeds threshold!")
